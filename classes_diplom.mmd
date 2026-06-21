@@ -1,0 +1,59 @@
+classDiagram
+  class App {
+    launch()
+  }
+  class IAnalyst {
+    get_best_deal(coin: Coin, exchange: Exchange) Deal
+  }
+  class Api {
+    has : Dict[str, bool]
+    close() None
+    fetch_balance(params: dict[str, Any]) dict[str, Any]
+    fetch_ticker(symbol: str, params: dict[str, Any]) dict[str, Any]
+    load_markets()
+    watch_balance(params: dict[str, Any]) dict[str, Any]
+    watch_ticker(symbol: str, params: dict[str, Any]) dict[str, Any]
+  }
+  class Connection {
+    connected : bool
+    working : bool
+    client() AbstractAsyncContextManager['Api']
+    connection()
+    disconnect() None
+  }
+  class IExchange {
+    buy(asset: 'Ticker')
+    launch()
+    sell(asset: 'Ticker')
+    stop()
+    subscribe_balance(coins: list['Coin']) AsyncIterator['Asset']
+    subscribe_price(coins: list['Coin']) AsyncIterator['Ticker']
+    transfer(asset: 'Asset', destination: 'Exchange')
+  }
+  class IManager {
+    launch()
+    stop()
+  }
+  class Asset {
+    ammount : Decimal
+    coin : str
+  }
+  class Coin {
+    address : str
+    name : str
+  }
+  class Deal {
+    departure_coin : str
+    departure_exchange : str
+    destination_coin : str
+    destination_exchange : str
+  }
+  class Exchange {
+    address_list : dict[str, 'Coin']
+    name : str
+    working : bool
+  }
+  class Ticker {
+    coin : str
+    price : Decimal
+  }

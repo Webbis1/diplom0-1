@@ -19,7 +19,8 @@ run:
 	$(VENV)/bin/python -m src
 
 docs:
-	$(VENV)/bin/pyreverse -ASmy -o mmd -p diplom src/
+	$(VENV)/bin/pyreverse -Amy -o mmd -p diplom src/
+	cp classes_diplom.mmd docs/classes_diplom.mmd
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +

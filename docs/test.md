@@ -1,2 +1,5 @@
-См. [[src/core/entities/coin.py]] для деталей о монетах
-Алгоритм описан в [[arbitrage-strategy]]
+
+[IExchange](../src/core/entities/coin.py)
+├── [[KucoinExchange]]
+├── [[BybitExchange]]
+└── [[MexcExchange]]

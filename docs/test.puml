@@ -1,0 +1,13 @@
+@startuml еуые
+
+interface IExchange
+
+class (KucoinExchange)[[../src/core/entities/coin.py]]
+class BybitExchange
+class MexcExchange
+
+IExchange <|.. KucoinExchange
+IExchange <|.. BybitExchange
+IExchange <|.. MexcExchange
+
+@enduml

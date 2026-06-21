@@ -1,0 +1,51 @@
+classDiagram
+  class src {
+  }
+  class app {
+  }
+  class application {
+  }
+  class interfaces {
+  }
+  class analyst {
+  }
+  class api {
+  }
+  class connection {
+  }
+  class exchange {
+  }
+  class manager {
+  }
+  class core {
+  }
+  class entities {
+  }
+  class asset {
+  }
+  class coin {
+  }
+  class deal {
+  }
+  class exchange {
+  }
+  class ticker {
+  }
+  app --> interfaces
+  interfaces --> api
+  interfaces --> connection
+  interfaces --> exchange
+  connection --> api
+  exchange --> entities
+  manager --> exchange
+  entities --> asset
+  entities --> coin
+  entities --> deal
+  entities --> exchange
+  entities --> ticker
+  asset --> coin
+  deal --> coin
+  deal --> exchange
+  exchange --> coin
+  ticker --> coin
+  analyst ..> entities
