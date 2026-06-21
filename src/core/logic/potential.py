@@ -1,19 +1,20 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from bitarray import bitarray
+from decimal import Decimal
 
 if TYPE_CHECKING:
     from .node import Node
 
 class Potential:
-    def __init__(self, a: float = 1.0, b: float = 0.0) -> None:
-        self.a: float = a
-        self.b: float = b
+    def __init__(self, a: Decimal = Decimal("1.0"), b: Decimal = Decimal("0.0")) -> None:
+        self.a: Decimal = a
+        self.b: Decimal = b
         self.path: bitarray = bitarray()
 
     def reset(self) -> None:
-        self.a = 1.0
-        self.b = 0.0
+        self.a = Decimal("1.0")
+        self.b = Decimal("0.0")
         self.path = bitarray()
         
     def add_point(self, node_id: int):

@@ -1,12 +1,15 @@
 from decimal import Decimal
-
+from typing import TYPE_CHECKING
+from core.logic import Graph
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from pyvis.network import Network
-from core.logic import Graph, Node
 from visualizer.graph_visualizer import GraphVisualizer
 from core.entities import Coin, Exchange
 import streamlit.components.v1 as components
+
+if TYPE_CHECKING:
+    from core.logic import Node
 
 
 st.set_page_config(page_title="Graph Visualizer", layout="wide")
@@ -14,7 +17,7 @@ st.title("Arbitrage Graph Visualizer")
 
 
 @st.cache_resource
-def get_graph() -> Graph:
+def get_graph() -> "Graph":
     return Graph()
 
 

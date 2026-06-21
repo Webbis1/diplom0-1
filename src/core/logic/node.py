@@ -2,22 +2,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from decimal import Decimal
 
+from .potential import Potential
 if TYPE_CHECKING:
-    from .potential import Potential
     from .edge import Edge
 
 
 #Вершина
 class Node:
-    def __init__(self, price_to_usdt: Decimal) -> None:
+    __slots__ = ("__price_to_usdt", "__potential", "__incoming_edges", "__outgoing_edges", "__id")
+    
+    def __init__(self, price_to_usdt: Decimal, id: int) -> None:
         self.__price_to_usdt: Decimal = price_to_usdt
         self.__potential: Potential = Potential()
         self.__incoming_edges: list[Edge] = []
+        """Входящие ребра"""
         self.__outgoing_edges: list[Edge] = []
-        self.__id = -1
-    
-    def set_id(self, id: int):
-        self.__id = id
+        """Исходящие ребра"""
+        self.__id: int = id
         
     def get_id(self) -> int:
         return self.__id
@@ -54,3 +55,15 @@ class Node:
     
     def get_price(self) -> Decimal:
         return self.__price_to_usdt
+    
+    def update_price(self, new_price: Decimal):
+        self.__price_to_usdt = new_price
+    
+    
+    def __hash__(self) -> int:
+        return hash(self.__id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.__id == other.__id

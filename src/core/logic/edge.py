@@ -1,26 +1,30 @@
 from __future__ import annotations
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from .potential import Potential
 if TYPE_CHECKING:
-    from .potential import Potential
     from .node import Node
 
 #Ребро
 class Edge:
-    def __init__(self, departure: Node, destination: Node, multiplier: float, fixed_fee: float = 0.0) -> None:
+    def __init__(self, departure: Node, destination: Node, commission: Decimal, fixed_fee: Decimal = Decimal("0.0")) -> None:
         self.__departure: Node = departure  # Узел отправления
         self.__destination: Node = destination  # Узел назначения
         
         
-        self.__multiplier: float = multiplier
-        self.__fixed_fee: float = fixed_fee
+        self.__commission: Decimal = 1 - commission
+        self.__fixed_fee: Decimal = fixed_fee
         self.__potential: Potential = Potential()
         
         self.__departure.add_outgoing_edge(self)
         self.__destination.add_incoming_edge(self)
         
-
-    def recalculation_benefit(self) -> Node | None:
+    @property
+    def multiplier(self) -> Decimal:
+        return self.__commission * (self.__destination.get_price() / self.__departure.get_price()) if self.__fixed_fee > 0 else self.__commission
+    
+    def update(self) -> list[Node] | None:
         potential: Potential = self.__destination.get_potential()
 
         departure_id: int = self.__departure.get_id()
@@ -28,32 +32,34 @@ class Edge:
             self.__potential.reset()
             return
 
-        self.__potential.a = potential.a * self.__multiplier
-        self.__potential.b = potential.b - (self.__fixed_fee * self.__multiplier * potential.a)
+        self.__potential.a = potential.a * self.multiplier
+        self.__potential.b = potential.b - (self.__fixed_fee * self.multiplier * potential.a)
 
         if self.__potential.a <= 1:
             self.__potential.reset()
         else:
             self.__potential.path = potential.get_copy_path()
 
-        return self.__departure
+        return [self.__departure]
         
-    async def recalculation_benefit_async(self) -> None:
-        self.recalculation_benefit()
 
-    def update(self, multiplier: float, fixed_fee: float = 0.0) -> None:
-        self.__multiplier = multiplier
+    def set_commission(self, commission: Decimal) -> None:
+        self.__commission = commission
+
+    def set_fixed_fee(self, fixed_fee: Decimal) -> None:
         self.__fixed_fee = fixed_fee
-        self.recalculation_benefit()
 
-    def get_multiplier(self) -> float:
-        return self.__multiplier
+
     
-    def get_fixed_fee(self) -> float:
+    def get_fixed_fee(self) -> Decimal:
         return self.__fixed_fee
     
     def get_potential(self) -> Potential:
         return self.__potential
+    
+    def __hash__(self) -> int:
+        return hash((self.__departure.get_id(), self.__destination.get_id()))
+
     
     def __lt__(self, other: Edge) -> bool:
         return self.__potential < other.__potential

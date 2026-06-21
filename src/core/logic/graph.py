@@ -1,11 +1,12 @@
-# from __future__ import annotations
+from __future__ import annotations
 from asyncio import Queue, create_task, Event
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from .node import Node
+from .edge import Edge
+
 if TYPE_CHECKING:
-    from .edge import Edge
     from ..entities import Coin
     from ..entities import Exchange
 
@@ -18,77 +19,67 @@ class Graph:
         self.__node_registry: set[Node] = set()
         self.__edge_registry: set[Edge] = set()
 
-        self.__node_queue: Queue[Node] = Queue()
-        self.__edge_queue: Queue[Edge] = Queue()
-        
-        self.__node_pending: set[Node] = set()
-        self.__edge_pending: set[Edge] = set()
-        
+        self.__update_queue: Queue[Node | Edge] = Queue()
+
+        self.__update_pending: set[Node | Edge] = set()
+
         self.__working: Event = Event()
         
     @property
     def working(self) -> bool:
         return self.__working.is_set()
 
-    def ensure_node(self, coin: "Coin", ex: "Exchange", price: Decimal) -> "Node":
-        node: Node = self.nodes.setdefault(coin, {}).setdefault(ex, Node(price))
-        if node not in self.__node_registry:
+    async def ensure_node(self, coin: "Coin", ex: "Exchange", price: Decimal) -> "Node":
+        if coin not in self.nodes:
+            self.nodes[coin] = {}
+        if ex not in self.nodes[coin]:
             node_id: int = len(self.__node_registry)
-            node.set_id(node_id)
+            node: Node = Node(price, node_id)
+            self.nodes[coin][ex] = node
             self.__node_registry.add(node)
+        else: 
+            node: Node = self.nodes[coin][ex]
+            node.update_price(price)
+
+        for edge in node.__outgoing_edges:
+            await self.__put_updatable(edge)
+        
+        await self.__put_updatable(node)
+         
         return node
 
-    def ensure_edge(self, departure: "Node", destination: "Node", multiplier: float, fixed_fee: float) -> "Edge":
+    def ensure_edge(self, departure: "Node", destination: "Node", commission: Decimal, fixed_fee: Decimal) -> "Edge":
         if departure not in self.__node_registry or destination not in self.__node_registry:
             raise KeyError("Node was not created via ensure_node")
 
-        edge: Edge = self.edges.setdefault(departure, {}).setdefault(destination, Edge(departure, destination, multiplier, fixed_fee))
+        edge: Edge = self.edges.setdefault(departure, {}).setdefault(destination, Edge(departure, destination, commission, fixed_fee))
         self.__edge_registry.add(edge)
         return edge
 
-    async def __put_node(self, node: "Node") -> None:
-        if node not in self.__node_pending:
-            self.__node_pending.add(node)
-            await self.__node_queue.put(node)
+    async def __put_updatable(self, updatable: Node | Edge) -> None:
+        if updatable not in self.__update_pending:
+            self.__update_pending.add(updatable)
+            await self.__update_queue.put(updatable)
 
-    async def __put_edge(self, edge: "Edge") -> None:
-        if edge not in self.__edge_pending:
-            self.__edge_pending.add(edge)
-            await self.__edge_queue.put(edge)
-
-    async def __edge_worker(self) -> None:
+    async def __update_worker(self) -> None:
         await self.__working.wait()
         while self.working:
             try:
-                edge: Edge = await self.__edge_queue.get()
-                if node := edge.recalculation_benefit():
-                    if node in self.__node_registry:
-                        await self.__put_node(node)
+                refreshable: Node | Edge = await self.__update_queue.get()
+                if updatables := refreshable.update():
+                    for updatable in updatables:
+                        if updatable in self.__edge_registry or updatable in self.__node_registry:
+                            await self.__put_updatable(updatable)
             finally:
-                self.__edge_pending.discard(edge)
-                self.__edge_queue.task_done()
-
-    async def __node_worker(self) -> None:
-        await self.__working.wait()
-        while self.working:
-            try:
-                node: Node = await self.__node_queue.get()
-                if edges := node.update():
-                    for edge in edges:
-                        if edge in self.__edge_registry:
-                            await self.__put_edge(edge)
-            finally:
-                self.__node_pending.discard(node)
-                self.__node_queue.task_done()
+                self.__update_pending.discard(refreshable)
+                self.__update_queue.task_done()
 
     async def start(self) -> None:
-        create_task(self.__edge_worker())
-        create_task(self.__node_worker())
+        create_task(self.__update_worker())
         self.__working.set()
 
     async def wait_completion(self) -> None:
-        await self.__node_queue.join()
-        await self.__edge_queue.join()
+        await self.__update_queue.join()
         
     async def stop(self):
         self.__working.clear()

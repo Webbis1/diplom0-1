@@ -1,4 +1,5 @@
 from __future__ import annotations
+from decimal import Decimal
 from pyvis.network import Network
 from typing import TYPE_CHECKING
 
@@ -26,8 +27,8 @@ class GraphVisualizer:
                 node_mapping[node] = vis_id
                 
                 label: str = f"{coin.symbol}\\n{ex.name}"
-                potential_a: float = node.get_potential().a
-                potential_b: float = node.get_potential().b
+                potential_a: Decimal = node.get_potential().a
+                potential_b: Decimal = node.get_potential().b
                 price: float = float(node.get_price())
                 
                 title: str = (
@@ -58,8 +59,8 @@ class GraphVisualizer:
                     continue
                 target_id: int = node_mapping[target]
                 
-                multiplier: float = edge.get_multiplier()
-                fixed_fee: float = edge.get_fixed_fee()
+                multiplier: Decimal = edge.multiplier
+                fixed_fee: Decimal = edge.get_fixed_fee()
                 
                 edge_title: str = (
                     f"Mult: {multiplier:.6f}\\n"
@@ -92,7 +93,7 @@ class GraphVisualizer:
         paths: list[dict[str, object]] = []
         for ex_node in self.__graph.nodes.values():
             for node in ex_node.values():
-                potential_a: float = node.get_potential().a
+                potential_a: Decimal = node.get_potential().a
                 if potential_a > 1.001:
                     path_ids: list[int] = list(node.get_potential().path)
                     path_data: dict[str, object] = {
