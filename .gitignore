@@ -1,4 +1,30 @@
-/.env
-/.venv
-/ tsets
-/ Mmd
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.venv/
+env/
+venv/
+.venv
+
+# Environment
+.env
+.env.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing & Linting
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
