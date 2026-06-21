@@ -23,7 +23,7 @@ class Edge:
     def recalculation_benefit(self) -> Node | None:
         potential: Potential = self.__destination.get_potential()
 
-        if self.__departure in potential.path:
+        if potential.path[self.__departure.get_id()]:
             self.__potential.reset()
             return
 
@@ -33,7 +33,7 @@ class Edge:
         if self.__potential.a <= 1:
             self.__potential.reset()
         else:
-            self.__potential.path = potential.path
+            self.__potential.path = potential.get_copy_path()
 
         return self.__departure
         

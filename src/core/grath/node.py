@@ -15,7 +15,13 @@ class Node:
         self.__potential: Potential = Potential()
         self.__incoming_edges: list[Edge] = []
         self.__outgoing_edges: list[Edge] = []
-
+        self.__id = -1
+    
+    def set_id(self, id: int):
+        self.__id = id
+        
+    def get_id(self) -> int:
+        return self.__id
 
     def add_incoming_edge(self, edge: Edge) -> None: 
         """Добавляет входящее ребро"""
@@ -27,7 +33,7 @@ class Node:
         self.__outgoing_edges.append(edge)
         # self.update()
 
-    def update(self) -> None:
+    def update(self) -> None | list[Edge]:
         if not self.__outgoing_edges:
             return
         best_edge: Edge = max(self.__outgoing_edges)
@@ -38,14 +44,11 @@ class Node:
             else:
                 self.__potential.a = best_edge.get_potential().a
                 self.__potential.b = best_edge.get_potential().b
-                self.__potential.path = best_edge.get_potential().path + (self.id,)
+                
+                self.__potential.path = best_edge.get_potential().get_copy_path()
+                self.__potential.add_point(self.__id)
 
-            self._notify_ancestors()
-
-    def _notify_ancestors(self) -> None:
-        for edge in self.__incoming_edges:
-            create_task(self.analyst._submit(f"edge_{id(edge)}", edge.recalculation_benefit_async))
-
+            return self.__incoming_edges
 
     def get_potential(self) -> Potential:
         return self.__potential

@@ -26,7 +26,10 @@ class Graph:
         
     def ensure_node(self, coin: Coin, ex: Exchange, price: Decimal) -> Node:
         node: Node = self.nodes.setdefault(coin, {}).setdefault(ex, Node(price))
-        self.__node_registry.add(node)
+        if node not in self.__node_registry:
+            node_id: int = len(self.__node_registry)
+            node.set_id(node_id)
+            self.__node_registry.add(node)
         return node
 
     def ensure_edge(self, departure: Node, destination: Node, multiplier: float, fixed_fee: float) -> Edge:
@@ -37,7 +40,7 @@ class Graph:
         self.__edge_registry.add(edge)
         return edge
     
-    async def __worker(self):
+    async def __edge_worker(self):
         while True:
             try:
                 edge: Edge = await self.__edge_update_q.get()
@@ -46,3 +49,14 @@ class Graph:
                         await self.__node_update_q.put(node)
             finally:
                 self.__edge_update_q.task_done()
+                
+    async def __node_worker(self):
+        while True:
+            try:
+                node: Node = await self.__node_update_q.get()
+                if edges := node.update():
+                    for edge in edges:
+                        if edge in self.__edge_registry:
+                            await self.__edge_update_q.put(edge)
+            finally:
+                self.__node_update_q.task_done()
