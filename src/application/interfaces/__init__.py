@@ -1,5 +1,5 @@
-from .exchange import Exchange
+from .exchange import IExchange
 from .connection import Connection
 from .api import Api
 
-__all__ = ["Exchange", "Connection", "Api"]
+__all__ = ["IExchange", "Connection", "Api"]

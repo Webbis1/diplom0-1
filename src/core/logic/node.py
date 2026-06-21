@@ -28,6 +28,9 @@ class Node:
         self.__incoming_edges.append(edge)
         # create_task(self.analyst._submit(f"edge_{id(edge)}", edge.recalculation_benefit_async))
 
+    def get_outgoing_edges(self) -> list[Edge]:
+        return self.__outgoing_edges
+    
     def add_outgoing_edge(self, edge: Edge) -> None:
         """Добавляет исходящее ребро"""
         self.__outgoing_edges.append(edge)

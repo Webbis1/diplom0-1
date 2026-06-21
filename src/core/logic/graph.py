@@ -32,6 +32,7 @@ class Graph:
     async def ensure_node(self, coin: "Coin", ex: "Exchange", price: Decimal) -> "Node":
         if coin not in self.nodes:
             self.nodes[coin] = {}
+            
         if ex not in self.nodes[coin]:
             node_id: int = len(self.__node_registry)
             node: Node = Node(price, node_id)
@@ -41,19 +42,28 @@ class Graph:
             node: Node = self.nodes[coin][ex]
             node.update_price(price)
 
-        for edge in node.__outgoing_edges:
+        for edge in node.get_outgoing_edges():
             await self.__put_updatable(edge)
         
         await self.__put_updatable(node)
          
         return node
 
-    def ensure_edge(self, departure: "Node", destination: "Node", commission: Decimal, fixed_fee: Decimal) -> "Edge":
+    async def ensure_edge(self, departure: "Node", destination: "Node", commission: Decimal, fixed_fee: Decimal) -> "Edge":
         if departure not in self.__node_registry or destination not in self.__node_registry:
             raise KeyError("Node was not created via ensure_node")
-
+        
+        
         edge: Edge = self.edges.setdefault(departure, {}).setdefault(destination, Edge(departure, destination, commission, fixed_fee))
-        self.__edge_registry.add(edge)
+        
+        if edge in self.__edge_registry:
+            edge.set_commission(commission)
+            edge.set_fixed_fee(fixed_fee)
+        else:
+            self.__edge_registry.add(edge)
+        
+        await self.__put_updatable(edge)
+        
         return edge
 
     async def __put_updatable(self, updatable: Node | Edge) -> None:
@@ -66,15 +76,18 @@ class Graph:
         while self.working:
             try:
                 refreshable: Node | Edge = await self.__update_queue.get()
+                print(f"Update {refreshable.get_potential()}")
                 if updatables := refreshable.update():
                     for updatable in updatables:
                         if updatable in self.__edge_registry or updatable in self.__node_registry:
                             await self.__put_updatable(updatable)
             finally:
                 self.__update_pending.discard(refreshable)
-                self.__update_queue.task_done()
+                # self.__update_queue.task_done()
 
     async def start(self) -> None:
+        if self.working:
+            return
         create_task(self.__update_worker())
         self.__working.set()
 

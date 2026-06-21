@@ -1,6 +1,6 @@
 import logging
 
-from src.app import App
+from src._____app import App
 
 import asyncio
 

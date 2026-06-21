@@ -7,7 +7,7 @@ from typing import AsyncIterator
 from ccxt.pro import Exchange as CcxtProExchange
 
 
-from src.application.interfaces import Exchange as IExchange, Connection as IConnection, Api
+from src.application.interfaces import IExchange, Connection as IConnection, Api
 from src.core.entities import Exchange as ExchangeModel, Asset, Coin, Ticker
 
 class Exchange(ABC, ExchangeModel):
@@ -21,29 +21,35 @@ class Exchange(ABC, ExchangeModel):
     def logger(self):
         return logging.getLogger(f'BaseExchange for {self.name}')
       
-    async def subscribe_balance(self, coins: set["Coin"]) -> AsyncIterator["Asset"]:
+    def subscribe_balance(self, coins: set["Coin"]) -> AsyncIterator["Asset"]:
         q: asyncio.Queue["Asset"] = asyncio.Queue(maxsize=100)
         self.__balance_sub.append(q)
-        
-        try:
-            while self.working:
-                asset: "Asset" = await q.get()
-                if asset.coin in coins:
-                    yield asset
-        finally:
-            self.__balance_sub.remove(q)
+
+        async def generator() -> AsyncIterator["Asset"]:
+            try:
+                while self.working:
+                    asset: "Asset" = await q.get()
+                    if asset.coin in coins:
+                        yield asset
+            finally:
+                self.__balance_sub.remove(q)
+
+        return generator()
             
-    async def subscribe_price(self, coins: set["Coin"]) -> AsyncIterator["Ticker"]:
+    def subscribe_price(self, coins: set["Coin"]) -> AsyncIterator["Ticker"]:
         q: asyncio.Queue["Ticker"] = asyncio.Queue(maxsize=100)
         self.__price_sub.append(q)
         
-        try:
-            while self.working:
-                ticker: "Ticker" = await q.get()
-                if ticker.coin in coins:
-                    yield ticker
-        finally:
-            self.__price_sub.remove(q)
+        async def generator() -> AsyncIterator["Ticker"]:
+            try:
+                while self.working:
+                    ticker: "Ticker" = await q.get()
+                    if ticker.coin in coins:
+                        yield ticker
+            finally:
+                self.__price_sub.remove(q)
+        
+        return generator()
             
     def _notify_balance_sub(self, coin: "Coin", new_ammount: Decimal):
         asset: "Asset" = Asset(coin, new_ammount)
