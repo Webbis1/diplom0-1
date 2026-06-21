@@ -1,3 +1,4 @@
 /.env
 /.venv
-/ .tsets
+/ tsets
+/ Mmd
