@@ -1,0 +1,49 @@
+stateDiagram-v2
+    [*] --> Disconnected
+
+    state Disconnected {
+        [*] --> Idle
+        note right of Idle
+            Инвариант:
+            __working = False
+            __instance = None
+            Ресурсы освобождены
+        end note
+    }
+
+    Disconnected --> Connecting : launch()
+
+    state Connecting {
+        [*] --> Attempting
+        Attempting --> Backoff : NetworkError / Timeout
+        Backoff --> Attempting : delay_expired
+        Attempting --> Connected : Success (load_markets)
+        Attempting --> Failed : AuthError / RetryLimit
+        note right of Backoff
+            Exponential Backoff:
+            delay = min(base * 2^n, max)
+        end note
+    }
+
+    Connected --> Reconnecting : NetworkFailure (via ShutdownWatcher)
+    Connected --> Disconnected : stop()
+
+    state Reconnecting {
+        [*] --> Cooldown
+        Cooldown --> Connecting : launch_time_reached
+        note right of Cooldown
+            Adaptive Delay:
+            DDoS: 60s
+            Maintenance: 300s
+            Network: 5s
+        end note
+    }
+
+    Reconnecting --> Disconnected : stop()
+    
+    Failed --> [*]
+    note right of Failed
+        Терминальное состояние:
+        Критическая ошибка (Auth/Permission)
+        Требуется внешний рестарт
+    end note

@@ -1,0 +1,58 @@
+graph TB
+    subgraph External["Внешняя среда (Гетерогенные торговые площадки)"]
+        EX1["API биржи A<br/>(REST / WebSocket)"]
+        EX2["API биржи B<br/>(REST / WebSocket)"]
+        EXN["API биржи N<br/>(REST / WebSocket)"]
+    end
+
+    subgraph ConnectionLayer["Подсистема сетевого взаимодействия (IConnection)"]
+        CONN_A["Connection A<br/>─────────────<br/>• Контекстный менеджер<br/>• Экспоненциальная задержка<br/>• Сторожевой таймер<br/>• Самовосстановление"]
+        CONN_B["Connection B<br/>─────────────<br/>• Контекстный менеджер<br/>• Экспоненциальная задержка<br/>• Сторожевой таймер<br/>• Самовосстановление"]
+    end
+
+    subgraph ExchangeLayer["Подсистема унификации интерфейсов (IExchange)"]
+        EXCH_A["Exchange A<br/>─────────────<br/>• Наблюдатели балансов и цен<br/>• Мультиплексирование событий<br/>• Очереди с вытеснением"]
+        EXCH_B["Exchange B<br/>─────────────<br/>• Наблюдатели балансов и цен<br/>• Мультиплексирование событий<br/>• Очереди с вытеснением"]
+    end
+
+    subgraph AnalyticalCore["Аналитическое ядро (Singleton)"]
+        ANALYST["Analyst<br/>─────────────<br/>• Пул асинхронных исполнителей<br/>• Очередь задач<br/>• Дедупликация событий<br/>• Блокировка чтения (RLock)<br/>• Хранилище графа"]
+        GRAPH["Ориентированный мультиграф G=(V,E)<br/>─────────────<br/>• Вершины (Exchange × Coin)<br/>• Ребра (Trade / Transfer)<br/>• Аффинные коэффициенты"]
+        ANALYST --- GRAPH
+    end
+
+    subgraph ManagementLayer["Модули управления активами"]
+        MGR_A["Manager A<br/>─────────────<br/>• Запрос по требованию<br/>• Гранулярные блокировки<br/>• Оценка целесообразности"]
+        MGR_B["Manager B<br/>─────────────<br/>• Запрос по требованию<br/>• Гранулярные блокировки<br/>• Оценка целесообразности"]
+    end
+
+    EX1 <-->|"TCP / WSS"| CONN_A
+    EX2 <-->|"TCP / WSS"| CONN_B
+    EXN -.->|"... масштабирование"| CONN_B
+
+    CONN_A -->|"Предоставление API"| EXCH_A
+    CONN_B -->|"Предоставление API"| EXCH_B
+
+    EXCH_A ==>|"Непрерывный поток: Срезы таблицы встречных предложений"| ANALYST
+    EXCH_B ==>|"Непрерывный поток: Срезы таблицы встречных предложений"| ANALYST
+
+    EXCH_A ==>|"Дискретный поток: События изменения балансов"| MGR_A
+    EXCH_B ==>|"Дискретный поток: События изменения балансов"| MGR_B
+
+    MGR_A -.->|"Запрос оптимальной траектории (чтение под RLock)"| ANALYST
+    MGR_B -.->|"Запрос оптимальной траектории (чтение под RLock)"| ANALYST
+
+    MGR_A -->|"Инициирование транзакций"| EXCH_A
+    MGR_B -->|"Инициирование транзакций"| EXCH_B
+
+    classDef external fill:#f9f2f4,stroke:#c7254e,stroke-width:2px,color:#333
+    classDef connection fill:#e8f4fd,stroke:#3498db,stroke-width:2px,color:#333
+    classDef exchange fill:#eafaf1,stroke:#27ae60,stroke-width:2px,color:#333
+    classDef analyst fill:#fef9e7,stroke:#f39c12,stroke-width:2px,color:#333
+    classDef manager fill:#f4ecf7,stroke:#8e44ad,stroke-width:2px,color:#333
+
+    class EX1,EX2,EXN external
+    class CONN_A,CONN_B connection
+    class EXCH_A,EXCH_B exchange
+    class ANALYST,GRAPH analyst
+    class MGR_A,MGR_B manager

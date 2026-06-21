@@ -1,0 +1,79 @@
+classDiagram
+    direction LR
+
+    class IConnection {
+        <<Интерфейс>>
+        +launch()
+        +stop()
+        +client() AsyncContextManager
+    }
+
+    class IExchange {
+        <<Интерфейс>>
+        +launch()
+        +buy(asset: Asset)
+        +sell(asset: Asset)
+        +transfer(asset: Asset, dest: IExchange)
+        +subscribe_balance(coins: list[Coin]) AsyncIterator[Asset]
+        +subscribe_price(coins: list[Coin]) AsyncIterator[Ticker]
+    }
+
+    class IAnalyst {
+        <<Интерфейс>>
+        +update_market_data(ticker: Ticker)
+        +get_optimal_route(coin: Coin) RouteCandidate
+        +launch()
+        +stop()
+    }
+
+    class IManager {
+        <<Интерфейс>>
+        +on_balance_update(asset: Asset)
+        +evaluate_and_execute()
+        +launch()
+    }
+
+    class Asset {
+        <<Доменная сущность (DTO)>>
+        +coin: Coin
+        +amount: Decimal
+    }
+
+    class Ticker {
+        <<Доменная сущность (DTO)>>
+        +coin: Coin
+        +best_offer_price: Decimal
+    }
+
+    class RouteCandidate {
+        <<Структура данных (DTO)>>
+        +source: IExchange
+        +destination: IExchange
+        +multiplier: float
+        +transfer_cost: Decimal
+        +path: tuple
+    }
+    
+    class Coin {
+        <<Идентификатор>>
+        +symbol: str
+        +network: str
+    }
+
+    %% Связи использования и зависимости
+    IExchange ..> IConnection : использует для сетевого транспорта
+    IExchange ..> Coin : оперирует идентификаторами
+    
+    %% Потоки данных (Push-модель)
+    IExchange ..> Asset : генерирует события изменения баланса
+    IExchange ..> Ticker : генерирует срезы таблицы встречных предложений
+    
+    %% Подписки и запросы (Pull-модель)
+    IManager ..> IExchange : подписывается на потоки балансов
+    IAnalyst ..> IExchange : подписывается на потоки котировок
+    
+    IManager ..> IAnalyst : запрашивает оценку траектории (Pull-on-Demand)
+    IAnalyst ..> RouteCandidate : возвращает параметры оптимального маршрута
+    
+    %% Управляющие воздействия
+    IManager ..> IExchange : инициирует торговые и переводные операции

@@ -1,0 +1,65 @@
+graph TB
+    subgraph External["Внешняя среда (Гетерогенные торговые площадки)"]
+        EX1["API биржи A<br/>(REST / WebSocket)"]
+        EX2["API биржи B<br/>(REST / WebSocket)"]
+        EXN["API биржи N<br/>(REST / WebSocket)"]
+    end
+
+    subgraph ConnectionLayer["Подсистема сетевого взаимодействия (IConnection)"]
+        CONN_A["Connection A<br/>─────────────<br/>• asynccontextmanager<br/>• Exponential Backoff<br/>• Shutdown Watcher<br/>• Self-Healing"]
+        CONN_B["Connection B<br/>─────────────<br/>• asynccontextmanager<br/>• Exponential Backoff<br/>• Shutdown Watcher<br/>• Self-Healing"]
+    end
+
+    subgraph ExchangeLayer["Подсистема унификации интерфейсов (IExchange)"]
+        EXCH_A["CcxtExchange A<br/>─────────────<br/>• run_balance_observer()<br/>• run_price_observer()<br/>• _notify_balance_sub()<br/>• _notify_price_sub()<br/>• asyncio.Queue[] (push)"]
+        EXCH_B["CcxtExchange B<br/>─────────────<br/>• run_balance_observer()<br/>• run_price_observer()<br/>• _notify_balance_sub()<br/>• _notify_price_sub()<br/>• asyncio.Queue[] (push)"]
+    end
+
+    subgraph AnalyticalCore["Аналитическое ядро (Singleton)"]
+        ANALYST["Analyst<br/>─────────────<br/>• Пул воркеров (asyncio.Task[])<br/>• asyncio.Queue (задачи)<br/>• _pending: Set (Event Coalescing)<br/>• RLock (консистентность чтения)<br/>• node_map / edge_map<br/>• submit() / update_market_data()"]
+        GRAPH["Ориентированный мультиграф G=(V,E)<br/>─────────────<br/>• Node[] (verшины: Exchange × Coin)<br/>• Edge[] (рёбра: Trade / Transfer)<br/>• Potential(a, b, path)"]
+        ANALYST --- GRAPH
+    end
+
+    subgraph ManagementLayer["Модули управления активами"]
+        MGR_A["Manager A<br/>─────────────<br/>• Pull-on-Demand<br/>• Coin-Level Lock<br/>• Decision Engine"]
+        MGR_B["Manager B<br/>─────────────<br/>• Pull-on-Demand<br/>• Coin-Level Lock<br/>• Decision Engine"]
+    end
+
+    %% Потоки данных: External -> Connection
+    EX1 <-->|"TCP / WSS"| CONN_A
+    EX2 <-->|"TCP / WSS"| CONN_B
+    EXN -.->|"... масштабирование"| CONN_B
+
+    %% Потоки данных: Connection -> Exchange (Api via contextmanager)
+    CONN_A -->|"client() → Api<br/>(asynccontextmanager)"| EXCH_A
+    CONN_B -->|"client() → Api<br/>(asynccontextmanager)"| EXCH_B
+
+    %% Push-поток: Exchange -> Analyst (цена)
+    EXCH_A ==>|"Push: on_price_update<br/>(update_market_data)"| ANALYST
+    EXCH_B ==>|"Push: on_price_update<br/>(update_market_data)"| ANALYST
+
+    %% Push-поток: Exchange -> Manager (баланс)
+    EXCH_A ==>|"Push: subscribe_balance<br/>(asyncio.Queue)"| MGR_A
+    EXCH_B ==>|"Push: subscribe_balance<br/>(asyncio.Queue)"| MGR_B
+
+    %% Pull-поток: Manager -> Analyst (запрос маршрута)
+    MGR_A -.->|"Pull: get_node_potential<br/>(RLock → read)"| ANALYST
+    MGR_B -.->|"Pull: get_node_potential<br/>(RLock → read)"| ANALYST
+
+    %% Управляющие воздействия: Manager -> Exchange (исполнение)
+    MGR_A -->|"Execute: buy / sell / transfer"| EXCH_A
+    MGR_B -->|"Execute: buy / sell / transfer"| EXCH_B
+
+    %% Стили
+    classDef external fill:#f9f2f4,stroke:#c7254e,stroke-width:2px,color:#333
+    classDef connection fill:#e8f4fd,stroke:#3498db,stroke-width:2px,color:#333
+    classDef exchange fill:#eafaf1,stroke:#27ae60,stroke-width:2px,color:#333
+    classDef analyst fill:#fef9e7,stroke:#f39c12,stroke-width:2px,color:#333
+    classDef manager fill:#f4ecf7,stroke:#8e44ad,stroke-width:2px,color:#333
+
+    class EX1,EX2,EXN external
+    class CONN_A,CONN_B connection
+    class EXCH_A,EXCH_B exchange
+    class ANALYST,GRAPH analyst
+    class MGR_A,MGR_B manager

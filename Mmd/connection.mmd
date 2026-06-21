@@ -1,0 +1,79 @@
+graph TD
+    %% Стилизация
+    classDef init fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef loop fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef error fill:#fbb,stroke:#333,stroke-width:1px;
+    classDef success fill:#999,stroke:#303,stroke-width:1px;
+
+    %% Главный жизненный цикл / Инициализация
+    subgraph Initialization [__init__ & Состояние]
+        A([Начало: Создание объекта]) --> B[Инициализация Event-ов и Lock-ов]
+        B --> C[self.__disabled.set]
+    end
+
+    %% Логика метода connection
+    subgraph Connection_Logic [Метод connection]
+        D[Вызов connection] --> E{working == True \n AND \n connected == False?}
+        E -- Нет --> F([Выход из метода])
+        E -- Да --> G[Цикл retry_count < retry_count_limit]
+        
+        G --> H[Расчет delay экспоненциально]
+        H --> I[asyncio.sleep delay]
+        I --> J[Блокировка __connection_lock]
+        
+        J --> K{Уже подключен?}
+        K -- Да --> F
+        K -- Нет --> L[Попытка load_markets]
+        
+        L -->|Успех| M[__connected.set]
+        M --> N[__is_shutdown.clear]
+        N --> O[Запуск __shutdown_watcher в фоне]
+        O --> P([Успешное завершение])
+        
+        L -->|Критическая Auth ошибка| Q[self.stop] --> R([Выход из цикла])
+        L -->|DDoS / Maintenance / RateLimit / Network| S[Логирование ошибки & asyncio.sleep] --> G
+        L -->|CancelledError| T[self.stop] --> F
+        
+        G -- Лимит попыток исчерпан --> U[self.stop] --> F
+    end
+
+    %% Логика фонового наблюдателя __shutdown_watcher
+    subgraph Shutdown_Watcher [Фоновый watcher]
+        O -.-> VW[Ожидание FIRST_COMPLETED из 3 тасок]
+        VW -->|1. __is_shutdown.wait| W1[Вызов __reconnecting]
+        VW -->|2. __disabled.wait| W2[Вызов disconnect]
+        VW -->|3. 24-часовой таймаут| W3[Вызов disconnect -> __reconnecting]
+        
+        VW -->|CancelledError / Exception| W4[Вызов disconnect]
+    end
+
+    %% Логика метода __reconnecting
+    subgraph Reconnection_Logic [Метод __reconnecting]
+        W1 -.-> R1[Проверка флагов]
+        W3 -.-> R1
+        R1 --> R2[__reconnection_is_underway.set]
+        R2 --> R3[Цикл ожидания launch_time]
+        R3 --> R4[Вызов self.connection]
+        R4 --> R5[finally: clear underway флаг]
+    end
+
+    %% Логика контекстного менеджера client
+    subgraph Client_Context [Контекстный менеджер client]
+        C1[Вызов async with client] --> C2[await __connected.wait]
+        C2 --> C3[yield __instance]
+        C3 -->|Использование в блоке with| C4{Произошла ошибка?}
+        
+        C4 -- Да: Сетевая/Биржевая ошибка --> E1[disconnect]
+        E1 --> E2[__update_last_exception расчет задержки]
+        E2 --> E3[__is_shutdown.set триггерит watcher]
+        
+        C4 -- Да: AuthenticationError --> E4[self.stop]
+        
+        C4 -- Нет/Финал --> C5[finally: Лог Close contextmanager]
+    end
+
+    %% Настройка классов стилей
+    class A,D,C1 init;
+    class G,R3 loop;
+    class Q,S,T,U,W4,E1,E4 error;
+    class P,M success;

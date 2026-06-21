@@ -1,0 +1,84 @@
+classDiagram
+    direction TB
+
+    %% Interfaces
+    class IConnection {
+        <<interface>>
+        +__aenter__() IConnection
+        +__aexit__(exc_type: Any, exc_val: Any, exc_tb: Any) Task
+        +send_request(payload: dict) Task[dict]
+        +listen_stream(channel: str) AsyncIterator[dict]
+    }
+
+    class IExchange {
+        <<interface>>
+        +buy(coin_id: str, amount: float, price: float) Task[dict]
+        +sell(coin_id: str, amount: float, price: float) Task[dict]
+        +transfer(coin_id: str, amount: float, target_exchange_id: str) Task[bool]
+        +subscribe_market_data(coin_id: str) Task[AsyncIterator[dict]]
+        +subscribe_balance() Task[AsyncIterator[dict]]
+    }
+
+    class IAnalyst {
+        <<interface>>
+        +subscribe_to_exchanges() Task
+        +calculate_route(start_coin_id: str, target_coin_id: str) list[str]
+    }
+
+    class IManager {
+        <<interface>>
+        +start_monitoring() Task
+    }
+
+    %% Implementations
+    class Connection {
+        -exchange_id: str
+        -client: ccxt.pro.Exchange
+    }
+
+    class Exchange {
+        -connection: IConnection
+    }
+
+    class Analyst {
+        <<Singleton>>
+        -graph: dict[str, dict[str, float]]
+        -exchanges: list[IExchange]
+    }
+
+    class Manager {
+        -exchange: IExchange
+        -analyst: IAnalyst
+        -current_balances: dict[str, float]
+        -execute_arbitrage_step() Task
+    }
+
+    class App {
+        -managers: list[IManager]
+        -analyst: IAnalyst
+        +bootstrap() void
+        +run() Task
+    }
+
+    class Coin {
+        +id: str
+        +ticker: str
+        +precision: int
+        +is_active: bool
+    }
+
+    %% Realizations (Implementation of interfaces)
+    Connection ..|> IConnection : реализует
+    Exchange ..|> IExchange : реализует
+    Analyst ..|> IAnalyst : реализует
+    Manager ..|> IManager : реализует
+
+    %% Dependencies and Associations
+    App --> IManager : управляет жизненным циклом
+    App --> IAnalyst : инициализирует
+    Manager --> IExchange : оперирует балансом/ордерами
+    Manager --> IAnalyst : запрашивает маршруты решения
+    Analyst --> IExchange : слушает WS-стримы рынка
+    Exchange --> IConnection : делает сетевые вызовы
+    Exchange ..> Coin : использует метаданные
+    Analyst ..> Coin : стро

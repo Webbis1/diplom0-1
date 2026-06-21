@@ -1,0 +1,42 @@
+flowchart TD
+    DISCONNECTED([Отключено])
+    CONNECTING[Подключение]
+    CONNECTED([Подключено])
+    RECONNECTING[Восстановление]
+    FAILED{{Критический сбой}}
+    
+    ATTEMPTING[Попытка соединения]
+    BACKOFF[Экспоненциальная задержка]
+    
+    COOLDOWN[Адаптивная задержка]
+    
+    DISCONNECTED -->|Запуск| CONNECTING
+    CONNECTING -->|Успех| CONNECTED
+    CONNECTING -->|Ошибка авторизации| FAILED
+    CONNECTING -->|Превышен лимит попыток| FAILED
+    
+    CONNECTED -->|Сетевой сбой| RECONNECTING
+    CONNECTED -->|Остановка| DISCONNECTED
+    
+    RECONNECTING -->|Истечение таймера| CONNECTING
+    RECONNECTING -->|Остановка| DISCONNECTED
+    
+    ATTEMPTING -->|Сетевая ошибка| BACKOFF
+    BACKOFF -->|Истечение задержки| ATTEMPTING
+    ATTEMPTING -->|Успех| CONNECTED
+    ATTEMPTING -->|Фатальная ошибка| FAILED
+    
+    COOLDOWN -->|Истечение задержки| CONNECTING
+    
+    CONNECTING ~~~ ATTEMPTING
+    RECONNECTING ~~~ COOLDOWN
+    
+    classDef normal fill:#d5e8d4,stroke:#82b366,stroke-width:2px,color:#333
+    classDef transient fill:#fff2cc,stroke:#d6b656,stroke-width:2px,color:#333
+    classDef terminal fill:#f8cecc,stroke:#b85450,stroke-width:2px,color:#333
+    classDef substate fill:#e1d5e7,stroke:#9673a6,stroke-width:1px,color:#333,stroke-dasharray: 5 5
+    
+    class DISCONNECTED,CONNECTED normal
+    class CONNECTING,RECONNECTING transient
+    class FAILED terminal
+    class ATTEMPTING,BACKOFF,COOLDOWN substate
