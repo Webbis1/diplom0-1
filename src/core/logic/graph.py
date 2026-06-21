@@ -1,10 +1,10 @@
-from __future__ import annotations
+# from __future__ import annotations
 from asyncio import Queue, create_task, Event
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from .node import Node
 if TYPE_CHECKING:
-    from .node import Node
     from .edge import Edge
     from ..entities import Coin
     from ..entities import Exchange
@@ -30,7 +30,7 @@ class Graph:
     def working(self) -> bool:
         return self.__working.is_set()
 
-    def ensure_node(self, coin: Coin, ex: Exchange, price: Decimal) -> Node:
+    def ensure_node(self, coin: "Coin", ex: "Exchange", price: Decimal) -> "Node":
         node: Node = self.nodes.setdefault(coin, {}).setdefault(ex, Node(price))
         if node not in self.__node_registry:
             node_id: int = len(self.__node_registry)
@@ -38,7 +38,7 @@ class Graph:
             self.__node_registry.add(node)
         return node
 
-    def ensure_edge(self, departure: Node, destination: Node, multiplier: float, fixed_fee: float) -> Edge:
+    def ensure_edge(self, departure: "Node", destination: "Node", multiplier: float, fixed_fee: float) -> "Edge":
         if departure not in self.__node_registry or destination not in self.__node_registry:
             raise KeyError("Node was not created via ensure_node")
 
@@ -46,12 +46,12 @@ class Graph:
         self.__edge_registry.add(edge)
         return edge
 
-    async def __put_node(self, node: Node) -> None:
+    async def __put_node(self, node: "Node") -> None:
         if node not in self.__node_pending:
             self.__node_pending.add(node)
             await self.__node_queue.put(node)
 
-    async def __put_edge(self, edge: Edge) -> None:
+    async def __put_edge(self, edge: "Edge") -> None:
         if edge not in self.__edge_pending:
             self.__edge_pending.add(edge)
             await self.__edge_queue.put(edge)

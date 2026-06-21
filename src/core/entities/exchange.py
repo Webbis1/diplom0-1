@@ -11,3 +11,11 @@ class Exchange:
     @property
     def working(self) -> bool:
         return self._working.is_set()
+    
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Exchange):
+            return NotImplemented
+        return self.name == other.name
