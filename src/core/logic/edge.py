@@ -23,7 +23,8 @@ class Edge:
     def recalculation_benefit(self) -> Node | None:
         potential: Potential = self.__destination.get_potential()
 
-        if potential.path[self.__departure.get_id()]:
+        departure_id: int = self.__departure.get_id()
+        if len(potential.path) > departure_id and potential.path[departure_id]:
             self.__potential.reset()
             return
 
@@ -45,6 +46,12 @@ class Edge:
         self.__fixed_fee = fixed_fee
         self.recalculation_benefit()
 
+    def get_multiplier(self) -> float:
+        return self.__multiplier
+    
+    def get_fixed_fee(self) -> float:
+        return self.__fixed_fee
+    
     def get_potential(self) -> Potential:
         return self.__potential
     

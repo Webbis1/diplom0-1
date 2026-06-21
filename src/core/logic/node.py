@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from asyncio import create_task
 from decimal import Decimal
 
 if TYPE_CHECKING:
@@ -52,3 +51,6 @@ class Node:
 
     def get_potential(self) -> Potential:
         return self.__potential
+    
+    def get_price(self) -> Decimal:
+        return self.__price_to_usdt
