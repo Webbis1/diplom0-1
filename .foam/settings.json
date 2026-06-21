@@ -1,0 +1,8 @@
+{
+    "foam.files.exclude": [
+        "**/__pycache__/**",
+        "**/.venv/**",
+        "**/node_modules/**"
+    ],
+    "foam.graph.titleMaxLength": 30
+}

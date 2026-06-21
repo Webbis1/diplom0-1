@@ -5,58 +5,68 @@ if TYPE_CHECKING:
     from .potential import Potential
     from .node import Node
 
+#Ребро
 class Edge:
     def __init__(self, departure: Node, destination: Node, multiplier: float, fixed_fee: float = 0.0) -> None:
-        self.departure: Node = departure
-        self.destination: Node = destination
-        self.multiplier: float = multiplier
-        self.fixed_fee: float = fixed_fee
-        self.potential: Potential = Potential()
+        self.__departure: Node = departure  # Узел отправления
+        self.__destination: Node = destination  # Узел назначения
+        
+        
+        self.__multiplier: float = multiplier
+        self.__fixed_fee: float = fixed_fee
+        self.__potential: Potential = Potential()
+        
+        self.__departure.add_outgoing_edge(self)
+        self.__destination.add_incoming_edge(self)
+        
 
-    def recalculation_benefit(self) -> None:
-        potential: Potential = self.destination.potential
+    def recalculation_benefit(self) -> Node | None:
+        potential: Potential = self.__destination.get_potential()
 
-        if self.departure.id in potential.path:
-            self.potential.reset()
+        if self.__departure in potential.path:
+            self.__potential.reset()
             return
 
-        self.potential.a = potential.a * self.multiplier
-        self.potential.b = potential.b - (self.fixed_fee * self.multiplier * potential.a)
+        self.__potential.a = potential.a * self.__multiplier
+        self.__potential.b = potential.b - (self.__fixed_fee * self.__multiplier * potential.a)
 
-        if self.potential.a <= 1:
-            self.potential.reset()
+        if self.__potential.a <= 1:
+            self.__potential.reset()
         else:
-            self.potential.path = potential.path
+            self.__potential.path = potential.path
 
-        self.departure.update()
+        return self.__departure
         
     async def recalculation_benefit_async(self) -> None:
         self.recalculation_benefit()
 
     def update(self, multiplier: float, fixed_fee: float = 0.0) -> None:
-        self.multiplier = multiplier
-        self.fixed_fee = fixed_fee
+        self.__multiplier = multiplier
+        self.__fixed_fee = fixed_fee
         self.recalculation_benefit()
 
+    def get_potential(self) -> Potential:
+        return self.__potential
+    
     def __lt__(self, other: Edge) -> bool:
-        return self.potential < other.potential
+        return self.__potential < other.__potential
 
     def __le__(self, other: Edge) -> bool:
-        return self.potential <= other.potential
+        return self.__potential <= other.__potential
 
     def __gt__(self, other: Edge) -> bool:
-        return self.potential > other.potential
+        return self.__potential > other.__potential
 
     def __ge__(self, other: Edge) -> bool:
-        return self.potential >= other.potential
+        return self.__potential >= other.__potential
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Edge):
             return NotImplemented
-        return self.potential == other.potential
+        return self.__potential == other.__potential
 
     def __ne__(self, other: object) -> bool:
         if not isinstance(other, Edge):
             return NotImplemented
-        return self.potential != other.potential
+        return self.__potential != other.__potential
 
