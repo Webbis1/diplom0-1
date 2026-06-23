@@ -17,8 +17,10 @@ class Potential:
         self.b = Decimal("0.0")
         self.path = bitarray()
         
-    def add_point(self, node_id: int):
-        self.path[node_id] = 1
+    def add_point(self, node_id: int) -> None:
+        if len(self.path) <= node_id:
+            self.path.extend([False] * (node_id - len(self.path) + 1))
+        self.path[node_id] = True
     
     def get_copy_path(self) -> bitarray:
         return self.path.copy()

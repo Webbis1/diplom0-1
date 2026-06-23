@@ -24,24 +24,31 @@ class Edge:
     def multiplier(self) -> Decimal:
         return self.__commission * (self.__destination.get_price() / self.__departure.get_price()) if self.__fixed_fee > 0 else self.__commission
     
-    def update(self) -> list[Node] | None:
-        potential: Potential = self.__destination.get_potential()
-
+    def calculate_potential(self, incoming_potential: Potential) -> Potential | None:
         departure_id: int = self.__departure.get_id()
-        if len(potential.path) > departure_id and potential.path[departure_id]:
-            self.__potential.reset()
-            return
-
-        self.__potential.a = potential.a * self.multiplier
-        self.__potential.b = potential.b - (self.__fixed_fee * self.multiplier * potential.a)
-
-        if self.__potential.a <= 1:
-            self.__potential.reset()
-        else:
-            self.__potential.path = potential.get_copy_path()
-
-        return [self.__departure]
         
+        if len(incoming_potential.path) > departure_id and incoming_potential.path[departure_id]:
+            self.__potential.reset()
+            return None
+
+        self.__potential.a = incoming_potential.a * self.multiplier
+        self.__potential.b = incoming_potential.b - (self.__fixed_fee * self.multiplier * incoming_potential.a)
+
+        if self.__potential.a <= Decimal("1.0"):
+            self.__potential.reset()
+            return None
+            
+        self.__potential.path = incoming_potential.get_copy_path()
+        return self.__potential
+
+    def update(self) -> list[Node] | None:
+        destination_potential: Potential = self.__destination.get_potential()
+        updated_potential: Potential | None = self.calculate_potential(destination_potential)
+        
+        if updated_potential is None:
+            return None
+            
+        return [self.__departure]
 
     def set_commission(self, commission: Decimal) -> None:
         self.__commission = commission
@@ -49,7 +56,8 @@ class Edge:
     def set_fixed_fee(self, fixed_fee: Decimal) -> None:
         self.__fixed_fee = fixed_fee
 
-
+    def get_destination(self):
+        return self.__destination
     
     def get_fixed_fee(self) -> Decimal:
         return self.__fixed_fee

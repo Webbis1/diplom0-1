@@ -11,14 +11,14 @@ if TYPE_CHECKING:
 class Node:
     __slots__ = ("__price_to_usdt", "__potential", "__incoming_edges", "__outgoing_edges", "__id")
     
-    def __init__(self, price_to_usdt: Decimal, id: int) -> None:
+    def __init__(self, price_to_usdt: Decimal, node_id: int) -> None:
         self.__price_to_usdt: Decimal = price_to_usdt
         self.__potential: Potential = Potential()
         self.__incoming_edges: list[Edge] = []
         """Входящие ребра"""
         self.__outgoing_edges: list[Edge] = []
         """Исходящие ребра"""
-        self.__id: int = id
+        self.__id: int = node_id
         
     def get_id(self) -> int:
         return self.__id
@@ -31,27 +31,33 @@ class Node:
     def get_outgoing_edges(self) -> list[Edge]:
         return self.__outgoing_edges
     
+    def get_incoming_edges(self) -> list[Edge]:
+        return self.__incoming_edges
+    
     def add_outgoing_edge(self, edge: Edge) -> None:
         """Добавляет исходящее ребро"""
         self.__outgoing_edges.append(edge)
         # self.update()
 
-    def update(self) -> None | list[Edge]:
+    def update(self) -> list[Edge] | None:
         if not self.__outgoing_edges:
-            return
+            return None
+            
         best_edge: Edge = max(self.__outgoing_edges)
-
-        if best_edge.get_potential() != self.__potential:
-            if best_edge.get_potential().a <= 1.0:
-                self.__potential.reset()
-            else:
-                self.__potential.a = best_edge.get_potential().a
-                self.__potential.b = best_edge.get_potential().b
-                
-                self.__potential.path = best_edge.get_potential().get_copy_path()
-                self.__potential.add_point(self.__id)
-
-            return self.__incoming_edges
+        best_potential: Potential = best_edge.get_potential()
+        
+        if best_potential.a <= Decimal("1.0"):
+            self.__potential.reset()
+            return None
+        
+        if best_potential > self.__potential:
+            self.__potential.a = best_potential.a
+            self.__potential.b = best_potential.b
+            self.__potential.path = best_potential.get_copy_path()
+            self.__potential.add_point(self.__id)
+            return list(self.__incoming_edges)
+            
+        return None
 
     def get_potential(self) -> Potential:
         return self.__potential
