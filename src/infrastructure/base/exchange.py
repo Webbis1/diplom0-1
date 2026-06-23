@@ -9,6 +9,7 @@ from ccxt.pro import Exchange as CcxtProExchange
 
 from src.application.interfaces import IExchange, Connection as IConnection, Api
 from src.core.entities import Exchange as ExchangeModel, Asset, Coin, Ticker
+from src.core.entities.market_info import MarketInfo
 
 class Exchange(ABC, ExchangeModel):
     def __init__(self, name: str, conn: "IConnection") -> None:
@@ -131,7 +132,11 @@ class Exchange(ABC, ExchangeModel):
             except Exception as e:
                 self.logger.critical(f"Unhandled error in price observer loop: {type(e).__name__}: {e}")
                 await asyncio.sleep(5)
-                        
+        
+    @abstractmethod  
+    async def get_markets(self) -> list[MarketInfo]: ...
+
+                            
     async def launch(self, tg: asyncio.TaskGroup) -> None:
         tg.create_task(self.run_balance_observer())
         tg.create_task(self.run_price_observer())        
