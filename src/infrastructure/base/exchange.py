@@ -142,5 +142,21 @@ class Exchange(ABC, ExchangeModel):
         tg.create_task(self.run_price_observer())        
         self._working.set()
 
+    
+    async def get_withdrawal_fee(self, coin: Coin) -> Decimal:
+        return Decimal("1.0")
+    
+    async def get_available_coins(self) -> list[Coin]:
+        return []
+
+    async def get_initial_price(self, coin: Coin) -> Decimal:
+        return Decimal("1.0")
+    
+
+    def get_usdt(self) -> Coin:
+        return Coin("usdt", "usdt")
+
+    async def get_trading_fee(self, base: Coin, quote: Coin) -> Decimal:
+        return Decimal("0.001")
 
 
