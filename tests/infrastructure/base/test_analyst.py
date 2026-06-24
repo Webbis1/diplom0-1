@@ -7,8 +7,8 @@ from typing import AsyncGenerator
 import pytest
 
 from src.infrastructure.base.analyst import Analyst
-from src.core.logic.graph import Graph
-from src.core.logic.potential import Potential
+from src.application.logic.graph import Graph
+from src.core.entities.potential import Potential
 
 
 class TestAnalystSingleton:

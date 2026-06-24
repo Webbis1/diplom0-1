@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.core.logic.node import Node
-from src.core.logic.potential import Potential
+from src.application.logic.node import Node
+from src.core.entities.potential import Potential
 
 
 class FakeEdge:

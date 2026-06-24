@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from bitarray import bitarray
 
 if TYPE_CHECKING:
-    from src.core.logic.edge import Edge
-    from src.core.logic.node import Node
+    from src.application.logic.edge import Edge
+    from src.application.logic.node import Node
 
 
 @dataclass(frozen=True)

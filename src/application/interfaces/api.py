@@ -1,17 +1,32 @@
-from typing import Protocol, Any, Dict
+from decimal import Decimal
+from typing import Protocol, Any
 
 class Api(Protocol):
-    has: Dict[str, bool]
-
+    has: dict[str, bool]
     async def watch_ticker(self, symbol: str, params: dict[str, Any] = ...) -> dict[str, Any]:...
-
     async def watch_balance(self, params: dict[str, Any] = ...) -> dict[str, Any]:...
-
     async def fetch_ticker(self, symbol: str, params: dict[str, Any] = ...) -> dict[str, Any]:...
-
     async def fetch_balance(self, params: dict[str, Any] = ...) -> dict[str, Any]: ...
-
-
     async def close(self) -> None: ...
     async def load_markets(self): ...
+    async def fetch_withdrawal_fee(self, symbol: str) -> dict[str, Any]: ...
+    async def fetch_trading_fee(self, symbol: str) -> dict[str, Any]: ...
+    async def create_order(
+        self,
+        symbol: str,
+        type: str,       # "market" | "limit"
+        side: str,       # "buy" | "sell"
+        amount: Decimal,
+        price: Decimal | None = None,
+    ) -> dict[str, Any]: ...
     
+    async def withdraw(
+        self,
+        symbol: str,
+        amount: Decimal,
+        address: str,
+        params: dict[str, Any] = ...,
+    ) -> dict[str, Any]: ...
+
+    
+    async def fetch_deposit_address(self, code: str) -> dict[str, Any]: ...

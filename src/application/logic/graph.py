@@ -3,17 +3,12 @@ from asyncio import Queue, create_task, Event
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from src.core.utils.async_rlock import AsyncRLock
-
 from .node import Node
 from .edge import Edge
-from src.core.dto.route_candidate import RouteCandidate
 
 if TYPE_CHECKING:
-    from ..entities import Coin
-    from ..entities import Exchange
-    from src.core.logic.potential import Potential
-    from src.core.utils.async_rlock import AsyncRLock
+    from ...core.entities import Coin
+    from ...core.entities import Exchange
     
 
 class Graph:
@@ -30,13 +25,11 @@ class Graph:
 
         self._working: Event = Event()
         
-        self._route_lock: AsyncRLock = AsyncRLock()
-        
     @property
     def working(self) -> bool:
         return self._working.is_set()
 
-    async def ensure_node(self, coin: "Coin", ex: "Exchange", price: Decimal) -> "Node":
+    async def ensure_node(self, coin: Coin, ex: Exchange, price: Decimal) -> Node:
         if coin not in self.nodes:
             self.nodes[coin] = {}
             
@@ -58,7 +51,7 @@ class Graph:
         await self.__put_updatable(node)
         return node
 
-    async def ensure_edge(self, departure: "Node", destination: "Node", commission: Decimal, fixed_fee: Decimal) -> "Edge":
+    async def ensure_edge(self, departure: Node, destination: Node, commission: Decimal, fixed_fee: Decimal) -> Edge:
         if departure not in self._node_registry or destination not in self._node_registry:
             raise KeyError("Node was not created via ensure_node")
         
@@ -94,6 +87,8 @@ class Graph:
                 if refreshable is not None:
                     self._update_pending.discard(refreshable)
                     self.__update_queue.task_done()
+    
+    
     async def start(self) -> None:
         if self.working:
             return

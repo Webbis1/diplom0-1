@@ -9,11 +9,11 @@ from pyvis.network import Network
 from streamlit_autorefresh import st_autorefresh
 
 from core.entities import Coin, Exchange
-from core.logic import Graph
+from src.application.logic import Graph
 from visualizer.graph_visualizer import GraphVisualizer
 
 if TYPE_CHECKING:
-    from core.logic import Node
+    from src.application.logic import Node
 
 
 st.set_page_config(page_title="Graph Visualizer", layout="wide")

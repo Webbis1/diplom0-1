@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from .coin import Coin
+from ..entities.coin import Coin
 
-@dataclass
+@dataclass(frozen=True) 
 class Asset:
     coin: "Coin"
-    ammount: Decimal
+    amount: Decimal

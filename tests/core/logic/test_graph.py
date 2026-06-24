@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.core.logic.graph import Graph
+from src.application.logic.graph import Graph
 
 
 class TestGraphWaveRelaxation:

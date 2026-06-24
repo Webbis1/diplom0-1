@@ -3,9 +3,6 @@ from typing import TYPE_CHECKING
 from bitarray import bitarray
 from decimal import Decimal
 
-if TYPE_CHECKING:
-    from .node import Node
-
 class Potential:
     def __init__(self, a: Decimal = Decimal("1.0"), b: Decimal = Decimal("0.0")) -> None:
         self.a: Decimal = a

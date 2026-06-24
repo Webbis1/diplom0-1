@@ -2,7 +2,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from .potential import Potential
+from ...core.entities.potential import Potential
 if TYPE_CHECKING:
     from .node import Node
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from decimal import Decimal
 
-from .potential import Potential
+from ...core.entities.potential import Potential
 if TYPE_CHECKING:
     from .edge import Edge
 

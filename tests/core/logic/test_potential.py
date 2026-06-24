@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from src.core.logic.potential import Potential
+from src.core.entities.potential import Potential
 
 
 class TestPotentialComparison:

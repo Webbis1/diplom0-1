@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-from src.core.logic.edge import Edge
-from src.core.logic.potential import Potential
+from src.application.logic.edge import Edge
+from src.core.entities.potential import Potential
 
 
 class TestEdgeCalculatePotential:

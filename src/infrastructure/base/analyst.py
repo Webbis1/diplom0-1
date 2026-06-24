@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Self
 
 from src.core.dto.route_candidate import RouteCandidate
 
-from src.core.logic import Graph
+from src.application.logic import Graph
 from src.core.utils.async_rlock import AsyncRLock
 
 if TYPE_CHECKING:
     from src.core.entities import Coin, Ticker
-    from src.core.logic import Edge, Node, Potential
+    from src.application.logic import Edge, Node, Potential
     from src.infrastructure.base.exchange import Exchange
 
 
@@ -40,7 +40,6 @@ class Analyst:
     async def stop(self) -> None:
         await self._graph.stop()
 
-# Переименовать в src/infrastructure/base/analyst.py
     async def _build_topology(self) -> None:
         available_coins: dict[Coin, list[Exchange]] = {}
         

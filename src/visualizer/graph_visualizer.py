@@ -3,8 +3,8 @@ from pyvis.network import Network
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..core.logic.graph import Graph
-    from ..core.logic.node import Node
+    from ..application.logic.graph import Graph
+    from ..application.logic.node import Node
     from ..core.entities import Coin
     from ..core.entities import Exchange
 
