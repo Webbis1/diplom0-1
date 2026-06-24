@@ -19,3 +19,10 @@ class RouteCandidate:
     multiplier: Decimal
     residual_value: Decimal
     path: bitarray
+
+    def __str__(self) -> str:
+        return (
+            f"mult: {self.multiplier:.4f} | "
+            f"res: {self.residual_value:.8f} | "
+            f"path: {self.path.to01()}"
+        )

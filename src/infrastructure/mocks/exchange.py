@@ -1,69 +1,98 @@
+import asyncio
 import logging
 from decimal import Decimal
+from typing import AsyncIterator, Any
 
-from src.core.dto.ticker import Ticker
-
+from src.core.dto import Asset, Ticker, MarketInfo
+from src.core.entities import Coin, Exchange as ExchangeModel
+from src.application.interfaces import Api, Connection as IConnection
 from ..base import Exchange as BaseExchange
-from src.application.interfaces import Api
-from src.core.dto.market_info import MarketInfo
-from src.core.entities import Coin
+
+# src/infrastructure/mocks/exchange.py
+import asyncio
+import logging
+from decimal import Decimal
+from typing import AsyncIterator, Any
+
+from src.core.dto import Asset, Ticker, MarketInfo
+from src.core.entities import Coin, Exchange as ExchangeModel
+from src.application.interfaces import Api, Connection as IConnection
+from ..base import Exchange as BaseExchange
 
 
 class MockExchange(BaseExchange):
-    
+
+    def __init__(self, info: ExchangeModel, conn: IConnection) -> None:
+        super().__init__(info, conn)
+        self._tracked_price_coins: set[Coin] = set()
+        self._tracked_balance_coins: set[Coin] = set()
+
     @property
-    def __logger(self):
+    def __logger(self) -> logging.Logger:
         return logging.getLogger(f'MockExchange for {self.name}')
-    
-    async def _balance_request(self, api: "Api"):
-        balance = await api.watch_balance()
-        self.__logger.info(balance)
+
+    def subscribe_price(self, coins: set[Coin]) -> AsyncIterator[Ticker]:
+        self._tracked_price_coins.update(coins)
+        self.__logger.debug(f"Subscribe price: {[c.symbol for c in coins]}")
+        return super().subscribe_price(coins)
+
+    def subscribe_balance(self, coins: set[Coin]) -> AsyncIterator[Asset]:
+        self._tracked_balance_coins.update(coins)
+        self.__logger.debug(f"Subscribe balance: {[c.symbol for c in coins]}")
+        return super().subscribe_balance(coins)
+
+    async def _balance_request(self, api: Api) -> None:
+        if not self._tracked_balance_coins:
+            await asyncio.sleep(1)
+            return
         
-    async def _price_request(self, api: "Api"):
-        ticker : Ticker = await api.watch_ticker("BTC/USDT")
-        self.__logger.info(ticker)
-        self._notify_price_sub(ticker.)
-    
+        response: dict[str, Any] = await api.watch_balance()
+        free: dict[str, float] = response.get("free", {})
+        for coin in self._tracked_balance_coins:
+            amount: float = free.get(coin.symbol, 0.0)
+            self.__logger.debug(f"Balance update for {coin.symbol}: {amount}")
+            self._notify_balance_sub(coin, Decimal(str(amount)))
+
+    async def _price_request(self, api: Api) -> None:
+        if not self._tracked_price_coins:
+            await asyncio.sleep(1)
+            return
+        
+        for coin in self._tracked_price_coins:
+            symbol: str = f"{coin.symbol}/USDT"
+            response: dict[str, Any] = await api.watch_ticker(symbol)
+            price: Decimal = Decimal(str(response.get("last", 0.0)))
+            self.__logger.debug(f"Price update for {coin.symbol}: {price}")
+            self._notify_price_sub(coin, price)
+
     async def get_markets(self) -> list[MarketInfo]:
-        usdt = Coin(address="usdt", symbol="USDT")
-        btc = Coin(address="btc", symbol="BTC")
-        eth = Coin(address="eth", symbol="ETH")
-        
-        return [
-            MarketInfo(base=btc, quote=usdt, taker_fee=Decimal("0.001"), min_amount=Decimal(0.5), active=True),
-            MarketInfo(base=eth, quote=usdt, taker_fee=Decimal("0.001"), min_amount=Decimal(0.5), active=True),
-        ]
-    
-    async def get_available_coins(self) -> list[Coin]:
-        return [
-            Coin(address="usdt", symbol="USDT"),
-            Coin(address="btc", symbol="BTC"),
-            Coin(address="eth", symbol="ETH"),
-        ]
-    
-    async def get_withdrawal_fee(self, coin: Coin) -> Decimal:
-        fees = {
-            "btc": Decimal("0.0005"),
-            "eth": Decimal("0.01"),
-            "usdt": Decimal("1.0"),
-        }
-        return fees.get(coin.symbol.lower(), Decimal("0.1"))
-    
-    async def get_initial_price(self, coin: Coin) -> Decimal:
-        prices = {
-            "btc": Decimal("50000.0"),
-            "eth": Decimal("3000.0"),
-            "usdt": Decimal("1.0"),
-        }
-        return prices.get(coin.symbol.lower(), Decimal("1.0"))
-    
-    async def get_trading_fee(self, base: Coin, quote: Coin) -> Decimal:
-        return Decimal("0.001")
-    
-    async def get_deposit_address(self, coin: Coin) -> str:
-        addresses = {
-            "btc": "mock_btc_address_12345",
-            "eth": "mock_eth_address_12345",
-            "usdt": "mock_usdt_address_12345",
-        }
-        return addresses.get(coin.symbol.lower(), "mock_default_address")
+        async with self._conn.client() as api:
+            if api is None:
+                return []
+            
+            try:
+                raw_markets: list[dict[str, Any]] = await getattr(api, "fetch_markets")()
+                markets: list[MarketInfo] = []
+                
+                for raw in raw_markets:
+                    base_coin = Coin(
+                        address=raw.get("base", "").lower(),
+                        symbol=raw.get("base", "")
+                    )
+                    quote_coin = Coin(
+                        address=raw.get("quote", "").lower(),
+                        symbol=raw.get("quote", "")
+                    )
+                    
+                    markets.append(MarketInfo(
+                        base=base_coin,
+                        quote=quote_coin,
+                        taker_fee=Decimal(str(raw.get("taker", 0.001))),
+                        min_amount=Decimal(str(raw.get("limits", {}).get("amount", {}).get("min", 0.5))),
+                        active=raw.get("active", True)
+                    ))
+                
+                return markets
+            except Exception as e:
+                self.logger.error(f"Failed to fetch markets: {e}")
+                return []

@@ -50,6 +50,8 @@ class Edge:
             
         return [self.__departure]
 
+    
+    
     def set_commission(self, commission: Decimal) -> None:
         self.__commission = commission
 

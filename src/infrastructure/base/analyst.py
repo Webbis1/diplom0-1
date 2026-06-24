@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from decimal import Decimal
 from typing import TYPE_CHECKING, Self
 
 from src.core.dto.route_candidate import RouteCandidate
-
 from src.application.logic import Graph
 from src.core.utils.async_rlock import AsyncRLock
-
-from src.core.entities import Coin, Ticker
+from src.core.entities import Coin
 if TYPE_CHECKING:
+    from src.core.entities import Ticker, Potential
     from src.application.logic import Edge, Node
-    from src.core.entities import Potential
-    from src.application.interfaces import IExchange as Exchange
-    from src.core.entities import Exchange as ExchangeInfo 
+    from src.infrastructure.base.exchange import Exchange
 
 
 class Analyst:
@@ -31,8 +29,12 @@ class Analyst:
         self._graph: Graph = Graph()
         self._route_lock: AsyncRLock = AsyncRLock()
         self._exchanges: list[Exchange] = ex_list
+        self._available_coins: dict[Exchange, set[Coin]] = {}
         self._initialized: bool = True
-        self._exchange_map: dict[ExchangeInfo, Exchange] = {ex.get_instance(): ex for ex in ex_list}
+
+    @property
+    def __logger(self) -> logging.Logger:
+        return logging.getLogger("Analyst")
 
     async def launch(self, tg: asyncio.TaskGroup) -> None:
         tg.create_task(self._graph.start())
@@ -45,24 +47,25 @@ class Analyst:
 
     async def _build_topology(self) -> None:
         available_coins: dict[Coin, list[Exchange]] = {}
-        
+
         for ex in self._exchanges:
             coins = await ex.get_available_coins()
+            self._available_coins[ex] = set(coins)
             for coin in coins:
                 if coin not in available_coins:
                     available_coins[coin] = []
                 available_coins[coin].append(ex)
-        
+
         for coin, exchanges in available_coins.items():
             if len(exchanges) < 2:
                 continue
-            
+
             nodes: dict[Exchange, Node] = {}
             for ex in exchanges:
                 price = await ex.get_initial_price(coin)
                 node = await self._graph.ensure_node(coin, ex.get_instance(), price)
                 nodes[ex] = node
-            
+
             for i, ex_a in enumerate(exchanges):
                 for ex_b in exchanges[i + 1:]:
                     fee_a_to_b = await ex_a.get_withdrawal_fee(coin)
@@ -72,7 +75,7 @@ class Analyst:
                         commission=Decimal("0.0"),
                         fixed_fee=fee_a_to_b
                     )
-                    
+
                     fee_b_to_a = await ex_b.get_withdrawal_fee(coin)
                     await self._graph.ensure_edge(
                         departure=nodes[ex_b],
@@ -80,45 +83,43 @@ class Analyst:
                         commission=Decimal("0.0"),
                         fixed_fee=fee_b_to_a
                     )
-        
+
         for ex in self._exchanges:
-            usdt = Coin('usdt', 'usdt')
+            usdt = Coin("usdt", "usdt")
             coins = available_coins.keys()
-            
+
             for coin in coins:
                 if coin == usdt:
                     continue
-                
+
                 if usdt not in self._graph.nodes or ex not in self._graph.nodes[usdt]:
                     continue
                 if coin not in self._graph.nodes or ex not in self._graph.nodes[coin]:
                     continue
-                
+
                 usdt_node = self._graph.nodes[usdt][ex.get_instance()]
                 coin_node = self._graph.nodes[coin][ex.get_instance()]
-                
+
                 fee = await ex.get_trading_fee(coin, usdt)
-                
+
                 await self._graph.ensure_edge(
                     departure=coin_node,
                     destination=usdt_node,
                     commission=fee,
                     fixed_fee=Decimal("0.0")
                 )
-                
+
                 await self._graph.ensure_edge(
                     departure=usdt_node,
                     destination=coin_node,
                     commission=fee,
                     fixed_fee=Decimal("0.0")
                 )
-                
+
     async def _subscribe_to_exchange(self, ex: Exchange) -> None:
-        coins: set[Coin] = set()
-        for coin, exchanges in self._graph.nodes.items():
-            if ex in exchanges:
-                coins.add(coin)
-        
+        coins = self._available_coins.get(ex, set())
+        self.__logger.info(f"Subscribing to {ex.name} for coins: {[c.symbol for c in coins]}")
+
         async for ticker in ex.subscribe_price(coins):
             await self._graph.ensure_node(ticker.coin, ex.get_instance(), ticker.price)
 
@@ -127,29 +128,29 @@ class Analyst:
             coin_nodes = self._graph.nodes.get(coin)
             if not coin_nodes:
                 return None
-                
+
             node = coin_nodes.get(exchange.get_instance())
             if node is None:
                 return None
-            
+
             outgoing_edges: list[Edge] = node.get_outgoing_edges()
             if not outgoing_edges:
                 return None
-                
+
             best_edge: Edge | None = None
             best_potential: Potential | None = None
-            
+
             for edge in outgoing_edges:
                 edge_potential: Potential = edge.get_potential()
                 if best_potential is None or edge_potential > best_potential:
                     best_potential = edge_potential
                     best_edge = edge
-                    
+
             if best_edge is None or best_potential is None or best_potential.a <= Decimal("1.0"):
                 return None
-                
+
             destination_node: Node = best_edge.get_destination()
-            
+
             return RouteCandidate(
                 departure=node,
                 destination=destination_node,

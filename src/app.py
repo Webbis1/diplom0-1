@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 import logging
 from asyncio import TaskGroup
 
@@ -25,15 +26,21 @@ class App:
                 connections = [
                     Connection("bitget", tg),
                     Connection("binance", tg),
+                    Connection("bybit", tg),
+                    Connection("htx", tg),
+                    Connection("kucoin", tg),
+                    Connection("mexc", tg),
                 ]
                 
                 # Запускаем все подключения
                 for conn in connections:
-                    tg.create_task(conn.launch())
+                    await conn.launch()
                 
                 # Создаем биржи
                 exchanges: list[Exchange] = []
                 for conn in connections:
+                    if not conn.connected:
+                        continue
                     exchange_info = ExchangeInfo(
                         name=conn.name,
                         address_list={}
@@ -51,6 +58,13 @@ class App:
                 # Держим приложение запущенным
                 while True:
                     await asyncio.sleep(1)
+                    if len(exchanges) > 0:
+                        ex = exchanges[0]
+                        coins = await ex.get_available_coins()
+                        if len(coins) > 0:
+                            route = await analyst.get_optimal_route(coins[0], ex)
+                            if route and route.multiplier > Decimal("1"):
+                                self.__logger.info(route)
                     
         except asyncio.CancelledError:
             self.__logger.warning("Главная задача системы была отменена.")
