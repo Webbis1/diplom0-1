@@ -12,15 +12,18 @@ from src.core.dto import Asset, Ticker, MarketInfo, Order
 
 class Exchange(ABC):
     def __init__(self, info: ExchangeModel, conn: "IConnection") -> None:
-        self._info: ExchangeModel = info
+        self.instance: ExchangeModel = info
         self._conn: "IConnection" = conn
         self._working = asyncio.Event()
         self._balance_sub: list[asyncio.Queue["Asset"]] = []
         self._price_sub: list[asyncio.Queue["Ticker"]] = []
     
+    def get_instance(self) -> ExchangeModel:
+        return self.instance
+    
     @property
     def name(self) -> str:
-        return self._info.name
+        return self.instance.name
     
     @property
     def working(self) -> bool:

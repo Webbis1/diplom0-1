@@ -9,10 +9,12 @@ from src.core.dto.route_candidate import RouteCandidate
 from src.application.logic import Graph
 from src.core.utils.async_rlock import AsyncRLock
 
+from src.core.entities import Coin, Ticker
 if TYPE_CHECKING:
-    from src.core.entities import Coin, Ticker
-    from src.application.logic import Edge, Node, Potential
-    from src.infrastructure.base.exchange import Exchange
+    from src.application.logic import Edge, Node
+    from src.core.entities import Potential
+    from src.application.interfaces import IExchange as Exchange
+    from src.core.entities import Exchange as ExchangeInfo 
 
 
 class Analyst:
@@ -30,6 +32,7 @@ class Analyst:
         self._route_lock: AsyncRLock = AsyncRLock()
         self._exchanges: list[Exchange] = ex_list
         self._initialized: bool = True
+        self._exchange_map: dict[ExchangeInfo, Exchange] = {ex.get_instance(): ex for ex in ex_list}
 
     async def launch(self, tg: asyncio.TaskGroup) -> None:
         tg.create_task(self._graph.start())
@@ -57,7 +60,7 @@ class Analyst:
             nodes: dict[Exchange, Node] = {}
             for ex in exchanges:
                 price = await ex.get_initial_price(coin)
-                node = await self._graph.ensure_node(coin, ex, price)
+                node = await self._graph.ensure_node(coin, ex.get_instance(), price)
                 nodes[ex] = node
             
             for i, ex_a in enumerate(exchanges):
@@ -79,7 +82,7 @@ class Analyst:
                     )
         
         for ex in self._exchanges:
-            usdt = ex.get_usdt()
+            usdt = Coin('usdt', 'usdt')
             coins = available_coins.keys()
             
             for coin in coins:
@@ -91,8 +94,8 @@ class Analyst:
                 if coin not in self._graph.nodes or ex not in self._graph.nodes[coin]:
                     continue
                 
-                usdt_node = self._graph.nodes[usdt][ex]
-                coin_node = self._graph.nodes[coin][ex]
+                usdt_node = self._graph.nodes[usdt][ex.get_instance()]
+                coin_node = self._graph.nodes[coin][ex.get_instance()]
                 
                 fee = await ex.get_trading_fee(coin, usdt)
                 
@@ -117,7 +120,7 @@ class Analyst:
                 coins.add(coin)
         
         async for ticker in ex.subscribe_price(coins):
-            await self._graph.ensure_node(ticker.coin, ex, ticker.price)
+            await self._graph.ensure_node(ticker.coin, ex.get_instance(), ticker.price)
 
     async def get_optimal_route(self, coin: Coin, exchange: Exchange) -> RouteCandidate | None:
         async with self._route_lock:
@@ -125,7 +128,7 @@ class Analyst:
             if not coin_nodes:
                 return None
                 
-            node = coin_nodes.get(exchange)
+            node = coin_nodes.get(exchange.get_instance())
             if node is None:
                 return None
             

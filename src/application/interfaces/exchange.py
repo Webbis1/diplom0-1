@@ -6,7 +6,7 @@ from typing import Protocol, AsyncIterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.core.dto import Asset, Ticker, Order
-    from src.core.entities.coin import Coin
+    from src.core.entities import Coin, Exchange
 
 
 class IExchange(Protocol):
@@ -26,3 +26,5 @@ class IExchange(Protocol):
     async def get_trading_fee(self, base: "Coin", quote: "Coin") -> Decimal: ...
     
     async def get_deposit_address(self, coin: "Coin") -> str: ...
+    
+    def get_instance(self) -> Exchange: ...

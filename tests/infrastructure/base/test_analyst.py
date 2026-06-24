@@ -9,6 +9,7 @@ import pytest
 from src.infrastructure.base.analyst import Analyst
 from src.application.logic.graph import Graph
 from src.core.entities.potential import Potential
+from src.core.entities import Coin  
 
 
 class TestAnalystSingleton:
@@ -37,20 +38,24 @@ class TestAnalystTopology:
         
         coin = MagicMock()
         
+        exchange_a_info = MagicMock()
         exchange_a = MagicMock()
+        exchange_a.get_instance = MagicMock(return_value=exchange_a_info)
         exchange_a.get_available_coins = AsyncMock(return_value=[coin])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("100.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         
+        exchange_b_info = MagicMock()
         exchange_b = MagicMock()
+        exchange_b.get_instance = MagicMock(return_value=exchange_b_info)
         exchange_b.get_available_coins = AsyncMock(return_value=[coin])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("105.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
         
-        exchange_a.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
 
-        exchange_b.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_b.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
         analyst._exchanges = [exchange_a, exchange_b]
@@ -58,11 +63,11 @@ class TestAnalystTopology:
         await analyst._build_topology()
         
         assert coin in analyst._graph.nodes
-        assert exchange_a in analyst._graph.nodes[coin]
-        assert exchange_b in analyst._graph.nodes[coin]
+        assert exchange_a_info in analyst._graph.nodes[coin]
+        assert exchange_b_info in analyst._graph.nodes[coin]
         
-        node_a = analyst._graph.nodes[coin][exchange_a]
-        node_b = analyst._graph.nodes[coin][exchange_b]
+        node_a = analyst._graph.nodes[coin][exchange_a_info]
+        node_b = analyst._graph.nodes[coin][exchange_b_info]
         
         assert len(node_a.get_outgoing_edges()) == 1
         assert len(node_b.get_outgoing_edges()) == 1
@@ -83,19 +88,21 @@ class TestAnalystTopology:
         coin_shared = MagicMock()
         
         exchange_a = MagicMock()
+        exchange_a.get_instance = MagicMock(return_value=MagicMock())
         exchange_a.get_available_coins = AsyncMock(return_value=[coin_single, coin_shared])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("100.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         
         exchange_b = MagicMock()
+        exchange_b.get_instance = MagicMock(return_value=MagicMock())
         exchange_b.get_available_coins = AsyncMock(return_value=[coin_shared])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("105.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
         
-        exchange_a.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
 
-        exchange_b.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_b.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
         analyst._exchanges = [exchange_a, exchange_b]
@@ -116,21 +123,22 @@ class TestAnalystTopology:
         coin3 = MagicMock()
         
         exchange_a = MagicMock()
+        exchange_a.get_instance = MagicMock(return_value=MagicMock())
         exchange_a.get_available_coins = AsyncMock(return_value=[coin1, coin2, coin3])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("100.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         
         exchange_b = MagicMock()
+        exchange_b.get_instance = MagicMock(return_value=MagicMock())
         exchange_b.get_available_coins = AsyncMock(return_value=[coin1, coin2])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("105.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
         
-        exchange_a.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
 
-        exchange_b.get_usdt = MagicMock(return_value=MagicMock())
-        exchange_b.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
+        exchange_b.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
         analyst._exchanges = [exchange_a, exchange_b]
         
@@ -149,20 +157,21 @@ class TestAnalystTopology:
         coin = MagicMock()
         
         exchange_a = MagicMock()
+        exchange_a.get_instance = MagicMock(return_value=MagicMock())
         exchange_a.get_available_coins = AsyncMock(return_value=[coin])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("100.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         
         exchange_b = MagicMock()
+        exchange_b.get_instance = MagicMock(return_value=MagicMock())
         exchange_b.get_available_coins = AsyncMock(return_value=[coin])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("105.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
         
         
-        exchange_a.get_usdt = MagicMock(return_value=MagicMock())
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
 
-        exchange_b.get_usdt = MagicMock(return_value=MagicMock())
+        
         exchange_b.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
         analyst._exchanges = [exchange_a, exchange_b]
@@ -178,18 +187,25 @@ class TestAnalystTopology:
         analyst._initialized = False
         analyst.__init__([])
         
-        usdt = MagicMock()
+        usdt = Coin(address='usdt', symbol='usdt')
         btc = MagicMock()
+        btc.address = 'btc'  
+        btc.symbol = 'btc'
         
+        
+        exchange_a_info = MagicMock()
         exchange_a = MagicMock()
-        exchange_a.get_usdt = MagicMock(return_value=usdt)
+        exchange_a.get_instance = exchange_a_info
+        
         exchange_a.get_available_coins = AsyncMock(return_value=[usdt, btc])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("100.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.001"))
         
+        exchange_b_info = MagicMock()
         exchange_b = MagicMock()
-        exchange_b.get_usdt = MagicMock(return_value=usdt)
+        exchange_b.instance = exchange_b_info
+        
         exchange_b.get_available_coins = AsyncMock(return_value=[usdt, btc])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("105.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
@@ -199,8 +215,8 @@ class TestAnalystTopology:
         
         await analyst._build_topology()
         
-        usdt_node_a = analyst._graph.nodes[usdt][exchange_a]
-        btc_node_a = analyst._graph.nodes[btc][exchange_a]
+        usdt_node_a = analyst._graph.nodes[usdt][exchange_a_info]
+        btc_node_a = analyst._graph.nodes[btc][exchange_a_info]
         
         outgoing_from_btc = btc_node_a.get_outgoing_edges()
         trading_edges_a = [e for e in outgoing_from_btc if e.get_destination() == usdt_node_a]
@@ -222,7 +238,8 @@ class TestAnalystTopology:
         btc = MagicMock()
         
         exchange_a = MagicMock()
-        exchange_a.get_usdt = MagicMock(return_value=usdt)
+        exchange_a.get_instance = MagicMock(return_value=MagicMock())
+        
         exchange_a.get_available_coins = AsyncMock(return_value=[btc])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("50000.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("0.0005"))
@@ -244,15 +261,19 @@ class TestAnalystTopology:
         usdt = MagicMock()
         eth = MagicMock()
         
+        exchange_a_info = MagicMock()
         exchange_a = MagicMock()
-        exchange_a.get_usdt = MagicMock(return_value=usdt)
+        exchange_a.instance = exchange_a_info
+        
         exchange_a.get_available_coins = AsyncMock(return_value=[usdt, eth])
         exchange_a.get_initial_price = AsyncMock(return_value=Decimal("3000.0"))
         exchange_a.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.0"))
         exchange_a.get_trading_fee = AsyncMock(return_value=Decimal("0.002"))
         
+        exchange_b_info = MagicMock()
         exchange_b = MagicMock()
-        exchange_b.get_usdt = MagicMock(return_value=usdt)
+        exchange_b.instance = exchange_b_info
+        
         exchange_b.get_available_coins = AsyncMock(return_value=[usdt, eth])
         exchange_b.get_initial_price = AsyncMock(return_value=Decimal("3010.0"))
         exchange_b.get_withdrawal_fee = AsyncMock(return_value=Decimal("1.5"))
@@ -262,14 +283,13 @@ class TestAnalystTopology:
         
         await analyst._build_topology()
         
-        eth_node_a = analyst._graph.nodes[eth][exchange_a]
+        eth_node_a = analyst._graph.nodes[eth][exchange_a_info]
         trading_edge = [e for e in eth_node_a.get_outgoing_edges() 
-                       if e.get_destination() == analyst._graph.nodes[usdt][exchange_a]][0]
+                       if e.get_destination() == analyst._graph.nodes[usdt][exchange_a_info]][0]
         
         assert trading_edge.get_fixed_fee() == Decimal("0.0")
-    
-        
-        
+
+
 class TestAnalystSubscription:
     @pytest.mark.asyncio
     async def test_subscribe_filters_coins_before_subscribing(self) -> None:
@@ -279,12 +299,18 @@ class TestAnalystSubscription:
         
         coin_on_ex = MagicMock()
         coin_off_ex = MagicMock()
+        
+        exchange_info = MagicMock()
         exchange = MagicMock()
+        exchange.instance = exchange_info
+        
+        other_exchange_info = MagicMock()
         other_exchange = MagicMock()
+        other_exchange.instance = other_exchange_info
         
         analyst._graph.nodes = {
-            coin_on_ex: {exchange: MagicMock()},
-            coin_off_ex: {other_exchange: MagicMock()}
+            coin_on_ex: {exchange_info: MagicMock()},
+            coin_off_ex: {other_exchange_info: MagicMock()}
         }
         
         captured_coins: set | None = None
@@ -309,9 +335,12 @@ class TestAnalystSubscription:
         analyst.__init__([])
         
         coin = MagicMock()
-        exchange = MagicMock()
         
-        analyst._graph.nodes = {coin: {exchange: MagicMock()}}
+        exchange_info = MagicMock()
+        exchange = MagicMock()
+        exchange.get_instance = MagicMock(return_value=exchange_info)
+        
+        analyst._graph.nodes = {coin: {exchange_info: MagicMock()}}
         
         ticker1 = MagicMock(coin=coin, price=Decimal("100.0"))
         ticker2 = MagicMock(coin=coin, price=Decimal("101.0"))
@@ -328,9 +357,9 @@ class TestAnalystSubscription:
             await analyst._subscribe_to_exchange(exchange)
             
             assert mock_ensure.call_count == 3
-            mock_ensure.assert_any_call(coin, exchange, Decimal("100.0"))
-            mock_ensure.assert_any_call(coin, exchange, Decimal("101.0"))
-            mock_ensure.assert_any_call(coin, exchange, Decimal("99.0"))
+            mock_ensure.assert_any_call(coin, exchange_info, Decimal("100.0"))
+            mock_ensure.assert_any_call(coin, exchange_info, Decimal("101.0"))
+            mock_ensure.assert_any_call(coin, exchange_info, Decimal("99.0"))
 
     @pytest.mark.asyncio
     async def test_subscribe_propagates_stream_errors(self) -> None:
@@ -339,6 +368,7 @@ class TestAnalystSubscription:
         analyst.__init__([])
         
         exchange = MagicMock()
+        exchange.get_instance = MagicMock(return_value=MagicMock())
         
         async def mock_subscribe(coins: set) -> AsyncGenerator[MagicMock, None]:
             yield MagicMock(coin=MagicMock(), price=Decimal("100.0"))
@@ -354,7 +384,10 @@ class TestAnalystLifecycle:
     @pytest.mark.asyncio
     async def test_launch_starts_graph_and_subscriptions(self) -> None:
         ex1 = MagicMock()
+        ex1.get_instance = MagicMock(return_value=MagicMock())
         ex2 = MagicMock()
+        ex2.get_instance = MagicMock(return_value=MagicMock())
+        
         analyst = Analyst([ex1, ex2])
         analyst._initialized = False
         analyst.__init__([ex1, ex2])
@@ -366,7 +399,6 @@ class TestAnalystLifecycle:
             
             mock_build.assert_awaited_once()
             assert tg.create_task.call_count == 3
-            
             
     @pytest.mark.asyncio
     async def test_stop_stops_graph(self) -> None:
@@ -408,13 +440,13 @@ class TestAnalystRouting:
         analyst.__init__([])
         
         coin = MagicMock()
-        exchange = MagicMock()
+        exchange_info = MagicMock()
         mock_node = MagicMock()
         mock_node.get_outgoing_edges.return_value = []
         
-        analyst._graph.nodes = {coin: {exchange: mock_node}}
+        analyst._graph.nodes = {coin: {exchange_info: mock_node}}
         
-        result = await analyst.get_optimal_route(coin, exchange)
+        result = await analyst.get_optimal_route(coin, exchange_info)
         assert result is None
 
     @pytest.mark.asyncio
@@ -424,7 +456,7 @@ class TestAnalystRouting:
         analyst.__init__([])
         
         coin = MagicMock()
-        exchange = MagicMock()
+        exchange_info = MagicMock()
         
         weak_potential = Potential(a=Decimal("0.9"), b=Decimal("0.0"))
         mock_edge = MagicMock()
@@ -433,9 +465,9 @@ class TestAnalystRouting:
         mock_node = MagicMock()
         mock_node.get_outgoing_edges.return_value = [mock_edge]
         
-        analyst._graph.nodes = {coin: {exchange: mock_node}}
+        analyst._graph.nodes = {coin: {exchange_info: mock_node}}
         
-        result = await analyst.get_optimal_route(coin, exchange)
+        result = await analyst.get_optimal_route(coin, exchange_info)
         assert result is None
 
     @pytest.mark.asyncio
@@ -445,7 +477,7 @@ class TestAnalystRouting:
         analyst.__init__([])
         
         coin = MagicMock()
-        exchange = MagicMock()
+        exchange_info = MagicMock()
         
         dest_node = MagicMock()
         profitable_potential = Potential(a=Decimal("1.05"), b=Decimal("10.0"))
@@ -457,9 +489,9 @@ class TestAnalystRouting:
         mock_node = MagicMock()
         mock_node.get_outgoing_edges.return_value = [mock_edge]
         
-        analyst._graph.nodes = {coin: {exchange: mock_node}}
+        analyst._graph.nodes = {coin: {exchange_info: mock_node}}
         
-        result = await analyst.get_optimal_route(coin, exchange)
+        result = await analyst.get_optimal_route(coin, exchange_info)
         
         assert result is not None
         assert result.multiplier == Decimal("1.05")
